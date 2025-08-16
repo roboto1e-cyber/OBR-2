@@ -38,6 +38,9 @@ prata_verify = 0
 veloc = 0
 parede_calculo = 0
 contador_colisao = 0
+direita_veloc = 0
+esquerda_veloc = 0
+velocidade_colisão = 0
 
 
 
@@ -374,68 +377,91 @@ async def GyroMoveInfinity(velocfinal):
     FreeFire.imu.reset_heading(0)
 
 async def GyroMoveColisão(veloc):
-  Dist = 0.5
-  global methodstop, erro,correcao
-  await wait(0)
-  FreeFire.imu.reset_heading(0)
-  esqmotor.reset_angle(0)
-  while not Dist <= methodstop:
+    global methodstop, erro, correcao, parede_calculo, contador_colisao
+    await multitask()
+
+    while methodstop < Dist:
+    
+        await wait(0)
+        methodstop = esqmotor.angle() / 360
+        erro = 0 - FreeFire.imu.heading()
+        dirmotor.dc(veloc - correcao)
+        esqmotor.dc(veloc + correcao)
+    
+    
+    Dist = 2
     await wait(0)
-  methodstop = esqmotor.angle() / 360
-  erro = 0 - FreeFire.imu.heading()
-  dirmotor.dc(veloc - correcao)
-  esqmotor.dc(veloc + correcao)
-  multitask() 
-  wait(0)
-  drive_base.stop()
-  parede_calculo = False
-  contador_colisao = 0
+    FreeFire.imu.reset_heading(0)
+    esqmotor.reset_angle(0)
 
-  if abs(dirmotor) > 300 or abs(esqmotor) > 300:
-   parede_calculo = True
-   contador_colisao = 0
+    drive_base.stop()
+    parede_calculo = False
+    contador_colisao = 0
 
-if parede_calculo and abs(dirmotor) > 100 or abs(esqmotor) > 100:
+    if abs(dirmotor.speed()) > 500 or abs(esqmotor.speed()) > 500:
+        parede_calculo = True
+        contador_colisao = 0
+
+
+if parede_calculo and (dirmotor.speed() < 400 or esqmotor.speed() < 400):
     contador_colisao += 1
-    if contador_colisao > 5:
+    if contador_colisao >= 5:
      print("Colisão detectada! Contador:", contador_colisao)
 
- 
-async def Mapeamento():
+
+def Mapeamentots():
     global t
+    GyroMoveFrente(0.6, 60)
+    GiroTurn(90)
+    GyroMoveInfinity(60)
+    if oil_VerdeFrente(await corFrente.hsv()) or oil_VermelhoFrente(await corFrente.hsv()):
+        elif oil_VerdeFrente(await corFrente.hsv()):
+            t = 1
+            GiroTurn(-45)
+            GyroMoveFrente(0.6, 60)
+            GiroTurn(-45)
+    else oil_BrancoFrente(await corFrente.hsv()):
+        await GiroTurn(-90)
+        await GyroMoveColisão(60)
+
+    if oil_VerdeFrente(await corFrente.hsv()) or oil_VermelhoFrente(await corFrente.hsv()):
+        elif oil_VerdeFrente(await corFrente.hsv()):
+            t = 2
+            GiroTurn(-45)
+            GyroMoveFrente(0.6, 60)
+            GiroTurn(-45)
+    else oil_BrancoFrente(await corFrente.hsv()):
+        await GiroTurn(-90)
+        await GyroMoveColisão(60)
+
+    if oil_VerdeFrente(await corFrente.hsv()) or oil_VermelhoFrente(await corFrente.hsv()):
+        elif oil_VerdeFrente(await corFrente.hsv()):
+            t = 3
+            GiroTurn(-45)
+            GyroMoveFrente(0.6, 60)
+            GiroTurn(-45)
+    else oil_BrancoFrente(await corFrente.hsv()):
+        await GiroTurn(-90)
+        await GyroMoveColisão(60)
+    if t = 0
+         t= 4
+           await GiroTurn(-135)
+           await GyroMoveFrente(1.6, 60)
+           await GiroTurn(-45)
+        FreeFire.imu.reset_heading(0)
     
-    hsv = await corFrente.hsv()
 
-    await GyroMoveFrente(0.6, 60)
-    await GiroTurn(90)
-    await GyroMoveInfinity(60)
-
-    for i in range(1, 5):  # Loop de 1 a 4
+def cv1():
+    await Garra("desce")
+    await GyroMoveColisão
 
 
-        if oil_VerdeFrente(hsv) or oil_VermelhoFrente(hsv):
-            if oil_VerdeFrente(hsv):
-                t = i  # Marca o número da tentativa atual
-                await GiroTurn(-45)
-                await GyroMoveFrente(0.6, 60)
-                await GiroTurn(-45)
-                await GyroMoveFrente(3, 60)
-
-        elif oil_BrancoFrente(hsv):
-            await GiroTurn(-90)
-            await GyroMoveFrente(4, 60)
-
-#def Mapeamentots():
-#    global t, prata_verify
-   
-#   hsv = await corFrente.hsv()
-#   if oil_prata(await CorDir.hsv()) and oil_prata(await CorEsq.hsv()):
-#      prata verify = 1
-
-
+#direita_veloc = dirmotor.speed
+#esquerda_veloc = esqmotor.speed
 
 async def main():
-    await Line_Follower(60)
-    await GyroMoveColisão(80)
-      
+   # await Line_Follower(60)
+    await GyroMoveColisão(60)
+ 
+
 run_task(main())
