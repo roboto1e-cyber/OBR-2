@@ -34,6 +34,13 @@ hsv_esq = 0
 reflexao_esquerdo = 0
 reflexao_direito = 0
 t = 0
+prata_verify = 0
+veloc = 0
+parede_calculo = 0
+contador_colisao = 0
+
+
+
 
 #REDEFINIR
 async def redefinir():
@@ -115,14 +122,22 @@ def oil_pretorescue(hsv):
     return 160 <= h <= 220 and s <= 30 and v <= 80
 
 #Fita Prata
-def oil_prata():
-    h1, s1, v1 = CorDir.hsv()
-    h2, s2, v2 = CorEsq.hsv()
+def oil_prata(hsv):
+    h, s, v = hsv
+    return 204 <= h <= 208 and 19 <= s <= 24 and 66 <= v <= 71
 
-    prata_dir = v1 > 75 and s1 < 20
-    prata_esq = v2 > 75 and s2 < 20
+async def teste_prauta():
+    if oil_prata(await CorDir.hsv()) and oil_prata(await CorEsq.hsv()):
+        wait(500)
+        drive_base.stop()
 
-    return prata_dir or prata_esq
+  #  h1, s1, v1 = CorDir.hsv()
+  #  h2, s2, v2 = CorEsq.hsv()
+
+  #  prata_dir = v1 > 75 and s1 < 20
+  #  prata_esq = v2 > 75 and s2 < 20
+
+  #  return prata_dir or prata_esq
 
 #Cálculo do PID
 async def PID(kp, ki, kd):
@@ -150,7 +165,8 @@ async def Line_Follower(velocidade):
         await Rampa()
         await verdedir()
         await verdeesq()
-        await Parabula()
+        await teste_prauta()
+       # await Parabula()
       
         # Aplica velocidade corrigida
         esqmotor.dc(SPEED + correcao)
@@ -357,7 +373,34 @@ async def GyroMoveInfinity(velocfinal):
 
     FreeFire.imu.reset_heading(0)
 
+async def GyroMoveColisão(veloc):
+  Dist = 0.5
+  global methodstop, erro,correcao
+  await wait(0)
+  FreeFire.imu.reset_heading(0)
+  esqmotor.reset_angle(0)
+  while not Dist <= methodstop:
+    await wait(0)
+  methodstop = esqmotor.angle() / 360
+  erro = 0 - FreeFire.imu.heading()
+  dirmotor.dc(veloc - correcao)
+  esqmotor.dc(veloc + correcao)
+  multitask() 
+  wait(0)
+  drive_base.stop()
+  parede_calculo = False
+  contador_colisao = 0
 
+  if abs(dirmotor) > 300 or abs(esqmotor) > 300:
+   parede_calculo = True
+   contador_colisao = 0
+
+if parede_calculo and abs(dirmotor) > 100 or abs(esqmotor) > 100:
+    contador_colisao += 1
+    if contador_colisao > 5:
+     print("Colisão detectada! Contador:", contador_colisao)
+
+ 
 async def Mapeamento():
     global t
     
@@ -382,7 +425,17 @@ async def Mapeamento():
             await GiroTurn(-90)
             await GyroMoveFrente(4, 60)
 
+#def Mapeamentots():
+#    global t, prata_verify
+   
+#   hsv = await corFrente.hsv()
+#   if oil_prata(await CorDir.hsv()) and oil_prata(await CorEsq.hsv()):
+#      prata verify = 1
+
+
+
 async def main():
-    await Line_Follower(70)
+    await Line_Follower(60)
+    await GyroMoveColisão(80)
       
 run_task(main())
