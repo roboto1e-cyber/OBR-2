@@ -91,6 +91,15 @@ async def verdeesq():
         drive_base.stop()
         await wait(200)
         await redefinir()
+
+async def doubleverde():
+    if oil_verde(await CorDir.hsv()) and oil_verde(await CorEsq.hsv()):
+        drive_base.stop()
+        await wait(200)
+        await GiroTurn(180)
+        drive_base.stop()
+        await wait(200)
+        await redefinir()
  
 
 
@@ -376,92 +385,119 @@ async def GyroMoveInfinity(velocfinal):
 
     FreeFire.imu.reset_heading(0)
 
-async def GyroMoveColisão(veloc):
-    global methodstop, erro, correcao, parede_calculo, contador_colisao
-    await multitask()
+async def GyroMoveColisao(veloc):
+    global erro, correcao, parede_calculo, contador_colisao
 
-    while methodstop < Dist:
-    
-        await wait(0)
-        methodstop = esqmotor.angle() / 360
-        erro = 0 - FreeFire.imu.heading()
-        dirmotor.dc(veloc - correcao)
-        esqmotor.dc(veloc + correcao)
-    
-    
-    Dist = 2
-    await wait(0)
     FreeFire.imu.reset_heading(0)
     esqmotor.reset_angle(0)
-
-    drive_base.stop()
-    parede_calculo = False
     contador_colisao = 0
 
-    if abs(dirmotor.speed()) > 500 or abs(esqmotor.speed()) > 500:
-        parede_calculo = True
-        contador_colisao = 0
+    Kp = 0.3  # Ajuste fino do ganho
+    ciclos_iniciais = 10
+    ciclos = 0
+
+    while True:
+        await wait(50)
+        ciclos += 1
+
+        # Correção robusta do heading (mantém erro entre -180 e +180)
+        erro = (0 - FreeFire.imu.heading() + 540) % 360 - 180
+        correcao = erro * Kp
+
+        # Movimento com correção
+        dirmotor.dc(veloc - correcao)
+        esqmotor.dc(veloc + correcao)
+
+        # Verificação de colisão
+        if ciclos > ciclos_iniciais:
+            motor_dir_lento = abs(dirmotor.speed()) < 100
+            motor_esq_lento = abs(esqmotor.speed()) < 100
+
+            if (motor_dir_lento or motor_esq_lento) and veloc > 0:
+                contador_colisao += 1
+            else:
+                contador_colisao = 0
+
+            if contador_colisao >= 5:
+                print("Colisão detectada!")
+                drive_base.stop()
+                await wait(200)  # Pausa antes da ré
+
+                # Dá ré usando função personalizada
+                await GyroMoveAtras(0.6, 60)
+
+                drive_base.stop()
+                break
 
 
-if parede_calculo and (dirmotor.speed() < 400 or esqmotor.speed() < 400):
-    contador_colisao += 1
-    if contador_colisao >= 5:
-     print("Colisão detectada! Contador:", contador_colisao)
+async def GyroMoveColisaoRe(veloc):
+    global erro, correcao, parede_calculo, contador_colisao
+
+    FreeFire.imu.reset_heading(0)
+    esqmotor.reset_angle(0)
+    contador_colisao = 0
+
+    Kp = 0.1
+    ciclos_iniciais = 10
+    ciclos = 0
+
+    while True:
+        await wait(50)
+        ciclos += 1
+
+        # Correção com giroscópio
+        erro = 0 - FreeFire.imu.heading()
+        correcao = erro * Kp
+
+        # Anda para trás com correção
+        dirmotor.dc(veloc + correcao)
+        esqmotor.dc(veloc - correcao)
+
+        # Verifica colisão após alguns ciclos
+        if ciclos > ciclos_iniciais:
+            # Verifica se os motores estão travando (velocidade real muito baixa)
+            if dirmotor.speed() > -100 or esqmotor.speed() > -100:
+                contador_colisao += 1
+            else:
+                contador_colisao = 0
+
+            # Se ficou travado por ciclos seguidos, considera colisão
+            if contador_colisao >= 5:
+                print("Colisão traseira detectada!")
+                drive_base.stop()
+                break
 
 
-def Mapeamentots():
+async def Mapeamentots():
     global t
-    GyroMoveFrente(0.6, 60)
-    GiroTurn(90)
-    GyroMoveInfinity(60)
-    if oil_VerdeFrente(await corFrente.hsv()) or oil_VermelhoFrente(await corFrente.hsv()):
-        elif oil_VerdeFrente(await corFrente.hsv()):
-            t = 1
-            GiroTurn(-45)
-            GyroMoveFrente(0.6, 60)
-            GiroTurn(-45)
-    else oil_BrancoFrente(await corFrente.hsv()):
-        await GiroTurn(-90)
-        await GyroMoveColisão(60)
-
-    if oil_VerdeFrente(await corFrente.hsv()) or oil_VermelhoFrente(await corFrente.hsv()):
-        elif oil_VerdeFrente(await corFrente.hsv()):
-            t = 2
-            GiroTurn(-45)
-            GyroMoveFrente(0.6, 60)
-            GiroTurn(-45)
-    else oil_BrancoFrente(await corFrente.hsv()):
-        await GiroTurn(-90)
-        await GyroMoveColisão(60)
-
-    if oil_VerdeFrente(await corFrente.hsv()) or oil_VermelhoFrente(await corFrente.hsv()):
-        elif oil_VerdeFrente(await corFrente.hsv()):
-            t = 3
-            GiroTurn(-45)
-            GyroMoveFrente(0.6, 60)
-            GiroTurn(-45)
-    else oil_BrancoFrente(await corFrente.hsv()):
-        await GiroTurn(-90)
-        await GyroMoveColisão(60)
-    if t = 0
-         t= 4
-           await GiroTurn(-135)
-           await GyroMoveFrente(1.6, 60)
-           await GiroTurn(-45)
-        FreeFire.imu.reset_heading(0)
+    
+    await GyroMoveFrente(1.2, 60)
+    await GiroTurn(90)
+    await GyroMoveInfinity(60)
+    if oil_verde(await corFrente.hsv()) or oil_vermelho(await corFrente.hsv()):
+        if oil_verde(await corFrente.hsv()):
+            print("Verde detectado!")
+            t == 1
+    await GiroTurn(-45)
+        
+        
+        
     
 
-def cv1():
-    await Garra("desce")
-    await GyroMoveColisão
+    
+
+
+
 
 
 #direita_veloc = dirmotor.speed
 #esquerda_veloc = esqmotor.speed
 
 async def main():
+  #  await GyroMoveColisaoRe(-60)
+    await GyroMoveColisao(60)
    # await Line_Follower(60)
-    await GyroMoveColisão(60)
+  # await Mapeamentots()
  
 
 run_task(main())
